@@ -252,6 +252,19 @@ fn apply_python_launch_env(command: &mut Command, repo_dir: &Path) {
         };
         command.env("PYTHONPATH", pythonpath);
     }
+
+    if let Ok(value) = std::env::var("DEBUG") {
+        if !is_boolean_env_value(&value) {
+            command.env_remove("DEBUG");
+        }
+    }
+}
+
+fn is_boolean_env_value(value: &str) -> bool {
+    matches!(
+        value.to_ascii_lowercase().as_str(),
+        "0" | "1" | "false" | "true" | "off" | "on" | "no" | "yes"
+    )
 }
 
 fn log_file(repo_dir: &Path, name: &str) -> Result<std::fs::File, String> {
@@ -457,4 +470,21 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running Odysseus desktop wrapper");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_boolean_env_value;
+
+    #[test]
+    fn recognizes_boolean_debug_values() {
+        for value in ["0", "1", "false", "true", "off", "on", "no", "yes", "TRUE"] {
+            assert!(is_boolean_env_value(value));
+        }
+    }
+
+    #[test]
+    fn rejects_release_profile_as_debug_boolean() {
+        assert!(!is_boolean_env_value("release"));
+    }
 }
