@@ -31,6 +31,7 @@ $excludedDirs = @(
   "dist",
   "src-tauri\target",
   "src-tauri\gen",
+  "__pycache__",
   ".playwright-mcp",
   "reports",
   "tasks",
@@ -49,7 +50,7 @@ $excludedFiles = @(
 
 function Test-ExcludedPath([string]$relativePath) {
   foreach ($dir in $excludedDirs) {
-    if ($relativePath -eq $dir -or $relativePath.StartsWith("$dir\")) {
+    if ($relativePath -eq $dir -or $relativePath.StartsWith("$dir\") -or $relativePath.Contains("\$dir\")) {
       return $true
     }
   }
@@ -77,8 +78,7 @@ Get-ChildItem -LiteralPath $repo -Force -Recurse -File | ForEach-Object {
   Copy-Item -LiteralPath $_.FullName -Destination $destination
 }
 
-$portableExe = Join-Path $stage "src-tauri\target\release\odysseus-desktop.exe"
-New-Item -ItemType Directory -Path (Split-Path $portableExe -Parent) -Force | Out-Null
+$portableExe = Join-Path $stage "odysseus-desktop.exe"
 Copy-Item -LiteralPath $desktopExe -Destination $portableExe -Force
 
 if (Test-Path $zip) {

@@ -3,19 +3,25 @@ setlocal
 
 cd /d "%~dp0"
 set "ODYSSEUS_REPO_DIR=%CD%"
-set "DESKTOP_EXE=%CD%\src-tauri\target\release\odysseus-desktop.exe"
+set "PORTABLE_DESKTOP_EXE=%CD%\odysseus-desktop.exe"
+set "SOURCE_DESKTOP_EXE=%CD%\src-tauri\target\release\odysseus-desktop.exe"
+set "DESKTOP_EXE=%PORTABLE_DESKTOP_EXE%"
 
 echo.
 echo Odysseus Desktop Launcher
 echo Repo: %ODYSSEUS_REPO_DIR%
 echo.
 
-if exist "%DESKTOP_EXE%" goto launch
+if exist "%PORTABLE_DESKTOP_EXE%" goto launch
+if exist "%SOURCE_DESKTOP_EXE%" (
+  set "DESKTOP_EXE=%SOURCE_DESKTOP_EXE%"
+  goto launch
+)
 
 echo Desktop app is not built yet.
 echo.
 echo If you downloaded Odysseus-Windows-Portable.zip, this file should already exist:
-echo %DESKTOP_EXE%
+echo %PORTABLE_DESKTOP_EXE%
 echo.
 echo This looks like a source checkout instead, so the launcher will try to build
 echo the Tauri wrapper locally. This requires Node.js, Rust, and the Tauri prerequisites.
@@ -55,10 +61,14 @@ if errorlevel 1 (
   exit /b 1
 )
 
+if exist "%SOURCE_DESKTOP_EXE%" (
+  set "DESKTOP_EXE=%SOURCE_DESKTOP_EXE%"
+)
+
 if not exist "%DESKTOP_EXE%" (
   echo.
   echo ERROR: Build finished, but the desktop executable was not found:
-  echo %DESKTOP_EXE%
+  echo %SOURCE_DESKTOP_EXE%
   pause
   exit /b 1
 )
