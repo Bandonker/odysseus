@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Odysseus</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #101418;
+      color: #eff3f4;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 32px;
+      background:
+        linear-gradient(135deg, rgba(34, 74, 88, 0.24), transparent 42%),
+        linear-gradient(315deg, rgba(92, 64, 42, 0.18), transparent 42%),
+        #101418;
+    }
+
+    main {
+      width: min(920px, 100%);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    img {
+      width: 96px;
+      height: 96px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    p {
+      margin: 0 auto;
+      color: #c9d2d5;
+      line-height: 1.55;
+    }
+
+    .status {
+      min-height: 52px;
+    }
+
+    .muted {
+      margin-top: 14px;
+      color: #93a1a6;
+      font-size: 13px;
+    }
+
+    .terminal {
+      width: 100%;
+      height: min(52vh, 420px);
+      margin-top: 24px;
+      padding: 16px;
+      overflow: auto;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      background: rgba(2, 6, 8, 0.82);
+      color: #d8ebe2;
+      font: 13px/1.45 "Fira Code", Consolas, "Cascadia Mono", monospace;
+      white-space: pre-wrap;
+      text-align: left;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .terminal:empty::before {
+      content: "Waiting for setup output...";
+      color: #7f8f95;
+    }
+
+    .bar {
+      width: min(320px, 100%);
+      height: 3px;
+      margin: 20px 0 0;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .bar::before {
+      content: "";
+      display: block;
+      width: 40%;
+      height: 100%;
+      border-radius: inherit;
+      background: #d9e7df;
+      animation: load 1.25s ease-in-out infinite;
+    }
+
+    @keyframes load {
+      0% { transform: translateX(-110%); }
+      100% { transform: translateX(260%); }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="brand">
+      <img src="./odysseus-icon.png" alt="">
+      <div>
+        <h1>Starting Odysseus</h1>
+        <p class="status" id="status">Checking local service...</p>
+      </div>
+    </div>
+    <div class="bar" aria-hidden="true"></div>
+    <p class="muted" id="hint">First local start can take several minutes while dependencies install.</p>
+    <pre class="terminal" id="terminal" aria-live="polite"></pre>
+  </main>
+  <script>
+    const target = "http://localhost:7000";
+    const statusEl = document.getElementById("status");
+    const hintEl = document.getElementById("hint");
+    const terminalEl = document.getElementById("terminal");
+    const invoke = window.__TAURI__?.core?.invoke;
+    let logTimer = null;
+
+    function setStatus(message, hint = "") {
+      statusEl.textContent = message;
+      hintEl.textContent = hint;
+    }
+
+    async function probe() {
+      if (invoke) {
+        try {
+          return await invoke("backend_ready");
+        } catch {
+          return false;
+        }
+      }
+
+      try {
+        const response = await fetch(`${target}/api/health`, { cache: "no-store" });
+        return response.ok;
+      } catch {
+        return false;
+      }
+    }
+
+    function setTerminal(content) {
+      terminalEl.textContent = content.trimStart();
+      terminalEl.scrollTop = terminalEl.scrollHeight;
+    }
+
+    async function refreshLog() {
+      if (!invoke) {
+        return;
+      }
+      try {
+        const log = await invoke("read_desktop_log");
+        if (log.ok && log.content) {
+          setTerminal(log.content);
+        } else if (!log.ok) {
+          setTerminal(log.message);
+        }
+      } catch (error) {
+        setTerminal(String(error));
+      }
+    }
+
+    async function openWhenReady(timeoutSeconds) {
+      for (let i = 0; i < timeoutSeconds; i += 1) {
+        if (await probe()) {
+          window.location.replace(target);
+          return true;
+        }
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      return false;
+    }
+
+    async function start() {
+      if (await probe()) {
+        window.location.replace(target);
+        return;
+      }
+
+      if (!invoke) {
+        setStatus("Odysseus is not running on localhost:7000.", "Start it from the repo with Python, or set ODYSSEUS_REPO_DIR so the desktop app can find the checkout.");
+        return;
+      }
+
+      setTerminal("Preparing local startup...\n");
+      logTimer = setInterval(refreshLog, 1000);
+      await refreshLog();
+
+      const info = await invoke("desktop_status");
+      if (info.running) {
+        window.location.replace(target);
+        return;
+      }
+
+      setStatus("Preparing local Odysseus runtime...", info.repoDir ? `Repo: ${info.repoDir}` : "Set ODYSSEUS_REPO_DIR if this installed app cannot find the checkout.");
+      let result = await invoke("start_local_backend");
+
+      if (!result.ok) {
+        setStatus("Could not start Odysseus locally.", result.message);
+        return;
+      }
+
+      setStatus(result.message, "Waiting for localhost:7000...");
+      const ready = await openWhenReady(420);
+      if (!ready) {
+        setStatus("Odysseus did not become ready in time.", "Check logs/desktop-local.log in the repo checkout.");
+      } else if (logTimer) {
+        clearInterval(logTimer);
+      }
+    }
+
+    start();
+  </script>
+</body>
+</html>

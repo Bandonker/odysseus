@@ -1,0 +1,18 @@
+[package]
+name = "odysseus-desktop"
+version = "0.1.0"
+description = "Desktop wrapper for the local Odysseus web app"
+authors = ["Odysseus contributors"]
+edition = "2021"
+license = "MIT"
+
+[lib]
+name = "odysseus_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+tauri = { version = "2", features = [] }

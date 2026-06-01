@@ -1,0 +1,67 @@
+name: Windows Portable Desktop
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/windows-portable.yml"
+      - "desktop/**"
+      - "src-tauri/**"
+      - "launch-windows.bat"
+      - "package.json"
+      - "package-lock.json"
+      - "requirements.txt"
+      - "scripts/package-windows-portable.ps1"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/windows-portable.yml"
+      - "desktop/**"
+      - "src-tauri/**"
+      - "launch-windows.bat"
+      - "package.json"
+      - "package-lock.json"
+      - "requirements.txt"
+      - "scripts/package-windows-portable.ps1"
+
+jobs:
+  build-windows-portable:
+    name: Build Windows portable zip
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Check Rust formatting
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
+
+      - name: Check Tauri Rust wrapper
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+
+      - name: Build Tauri desktop app
+        run: npm run desktop:build
+
+      - name: Package portable zip
+        shell: pwsh
+        run: ./scripts/package-windows-portable.ps1
+
+      - name: Upload portable zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: Odysseus-Windows-Portable
+          path: dist/Odysseus-Windows-Portable.zip
+          if-no-files-found: error

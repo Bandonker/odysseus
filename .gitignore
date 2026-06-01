@@ -49,6 +49,8 @@ Thumbs.db
 *.cache
 cache/
 output.txt.txt
+src-tauri/target/
+src-tauri/gen/
 
 # Media (uploaded/generated)
 *.jpg
@@ -59,6 +61,9 @@ output.txt.txt
 *.webp
 *.tiff
 *.pdf
+!desktop/odysseus-icon.png
+!src-tauri/icons/*.png
+!src-tauri/icons/*.ico
 
 # …except shipped demo assets in docs/ that the README links to.
 !docs/*.jpg

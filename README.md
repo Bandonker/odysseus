@@ -194,6 +194,34 @@ Local GPU *serving* of vLLM/SGLang needs Linux/WSL2; for a local model on Window
 Open `http://localhost:7000`, log in with the generated admin password,
 and configure everything else inside **Settings**.
 
+### Optional Windows desktop wrapper
+
+Odysseus also includes a thin Tauri desktop wrapper for Windows. It does not
+rewrite the Python service or frontend; it opens the local service in a native
+WebView and starts the local Python backend automatically when the repo checkout
+is available.
+
+For the easiest desktop path, download the GitHub Actions artifact named
+`Odysseus-Windows-Portable`, unzip it, and double-click `launch-windows.bat`.
+See [WINDOWS-PORTABLE.md](WINDOWS-PORTABLE.md) for the full walkthrough.
+
+The portable zip includes the prebuilt Tauri desktop app, so users do not need
+Node.js, Rust, Docker, or a browser setup. Python 3.11+ is still required
+because Odysseus runs a local Python webserver.
+
+Maintainers can build the portable user zip locally with:
+
+```powershell
+npm install
+npm run desktop:build
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\package-windows-portable.ps1
+```
+
+When `localhost:7000` is already running, the desktop wrapper opens the app
+directly. If setup or startup work is needed, it shows a startup viewport with a
+live tail of `logs/desktop-local.log`, then redirects to Odysseus when the local
+service is healthy.
+
 ## Security Notes
 Odysseus is a self-hosted workspace with powerful local tools: shell access, file uploads, model downloads, web research, email/calendar integrations, and API tokens. Treat it like an admin console.
 
